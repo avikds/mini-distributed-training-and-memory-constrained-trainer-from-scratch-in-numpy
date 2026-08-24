@@ -279,8 +279,13 @@ def scale_loss(loss, dy_pred, scale):
 
     return scaled_loss, scaled_dy_pred
 
-# Step 22 - unscale_gradients (not yet solved)
-# TODO: implement
+# Step 22 - unscale_gradients
+def unscale_gradients(grads, scale):
+    """Unscale gradients and return them as a new float32 dict."""
+    return {
+        key: (value / scale).astype(np.float32)
+        for key, value in grads.items()
+    }
 
 # Step 23 - has_non_finite_gradients (not yet solved)
 # TODO: implement
