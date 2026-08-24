@@ -25,8 +25,29 @@ def make_synthetic_regression_batch(batch_size, in_dim, out_dim, seed):
 
     return x.astype(np.float64), y.astype(np.float64)
 
-# Step 2 - init_mlp_params (not yet solved)
-# TODO: implement
+# Step 2 - init_mlp_params
+def init_mlp_params(in_dim, hidden_dim, out_dim, seed):
+    """Return He-initialized parameters for a two-layer MLP."""
+    np.random.seed(seed)
+
+    # He initialization for the first layer.
+    W1 = np.random.randn(in_dim, hidden_dim) * np.sqrt(2.0 / in_dim)
+
+    # Zero bias for the first layer.
+    b1 = np.zeros(hidden_dim, dtype=np.float64)
+
+    # He initialization for the second layer.
+    W2 = np.random.randn(hidden_dim, out_dim) * np.sqrt(2.0 / hidden_dim)
+
+    # Zero bias for the second layer.
+    b2 = np.zeros(out_dim, dtype=np.float64)
+
+    return {
+        "W1": W1.astype(np.float64),
+        "b1": b1,
+        "W2": W2.astype(np.float64),
+        "b2": b2,
+    }
 
 # Step 3 - linear_forward (not yet solved)
 # TODO: implement
