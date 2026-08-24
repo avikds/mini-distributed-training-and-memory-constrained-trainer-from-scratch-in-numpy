@@ -255,8 +255,13 @@ def estimate_checkpointing_memory_savings(batch_size, in_dim, hidden_dim, out_di
         "saved_bytes": saved_bytes,
     }
 
-# Step 19 - cast_to_half_precision (not yet solved)
-# TODO: implement
+# Step 19 - cast_to_half_precision
+def cast_to_half_precision(values):
+    """Return a new dict with all arrays converted to float16."""
+    return {
+        key: value.astype(np.float16)
+        for key, value in values.items()
+    }
 
 # Step 20 - make_master_params (not yet solved)
 # TODO: implement
