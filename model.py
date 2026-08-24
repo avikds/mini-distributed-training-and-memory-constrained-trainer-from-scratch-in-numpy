@@ -607,8 +607,10 @@ def zero_optimizer_step(params, grads, worker_states, lr=1e-3, beta1=0.9, beta2=
 
     return new_params, updated_worker_states
 
-# Step 36 - compute_param_memory_bytes (not yet solved)
-# TODO: implement
+# Step 36 - compute_param_memory_bytes
+def compute_param_memory_bytes(params):
+    """Return the total memory occupied by all parameter arrays."""
+    return int(sum(value.nbytes for value in params.values()))
 
 # Step 37 - compute_optimizer_memory_bytes (not yet solved)
 # TODO: implement
