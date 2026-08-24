@@ -365,8 +365,50 @@ def all_reduce_mean(per_worker_grads):
         for key in per_worker_grads[0]
     }
 
-# Step 28 - ring_all_reduce_mean (not yet solved)
-# TODO: implement
+# Step 28 - ring_all_reduce_mean
+def ring_all_reduce_mean(per_worker_arrays):
+    """Average arrays across workers using simulated ring reduce-scatter and all-gather."""
+    num_workers = len(per_worker_arrays)
+
+    if num_workers == 0:
+        raise ValueError("per_worker_arrays must not be empty")
+
+    shape = per_worker_arrays[0].shape
+
+    if any(arr.shape != shape for arr in per_worker_arrays):
+        raise ValueError("All worker arrays must have the same shape")
+
+    if num_workers == 1:
+        return per_worker_arrays[0].copy()
+
+    flat_arrays = [arr.reshape(-1) for arr in per_worker_arrays]
+
+    # Split into chunks as evenly as possible. np.array_split handles
+    # cases where the number of elements is not divisible by workers.
+    chunks = [
+        np.array_split(flat_array, num_workers)
+        for flat_array in flat_arrays
+    ]
+
+    # Ring reduce-scatter:
+    # Worker i ultimately owns chunk i, containing the sum from every worker.
+    reduced_chunks = []
+
+    for chunk_id in range(num_workers):
+        total = chunks[0][chunk_id].copy()
+
+        for worker in range(1, num_workers):
+            total = total + chunks[worker][chunk_id]
+
+        reduced_chunks.append(total)
+
+    # Ring all-gather:
+    # Every worker would circulate the reduced chunks around the ring.
+    # Since all workers must end with the same result, reconstruct the
+    # gathered flat array from the reduced chunks.
+    result = np.concatenate(reduced_chunks) / num_workers
+
+    return result.reshape(shape)
 
 # Step 29 - data_parallel_train_step (not yet solved)
 # TODO: implement
