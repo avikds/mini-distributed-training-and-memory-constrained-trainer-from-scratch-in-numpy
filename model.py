@@ -158,8 +158,13 @@ def accumulate_gradients(accum_grads, new_grads):
         for key in new_grads
     }
 
-# Step 13 - scale_accumulated_gradients (not yet solved)
-# TODO: implement
+# Step 13 - scale_accumulated_gradients
+def scale_accumulated_gradients(accum_grads, num_micro_batches):
+    """Average accumulated gradients over the number of micro-batches."""
+    return {
+        key: value / num_micro_batches
+        for key, value in accum_grads.items()
+    }
 
 # Step 14 - grad_accumulation_step (not yet solved)
 # TODO: implement
