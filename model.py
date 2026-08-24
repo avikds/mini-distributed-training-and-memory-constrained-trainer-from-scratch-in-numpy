@@ -100,8 +100,14 @@ def relu_backward(d_out, z):
     """Backpropagate through ReLU using the pre-activation z."""
     return d_out * (z > 0)
 
-# Step 9 - first_linear_backward (not yet solved)
-# TODO: implement
+# Step 9 - first_linear_backward
+def first_linear_backward(d_z1, x, w1):
+    """Backpropagate through the first linear layer."""
+    dx = d_z1 @ w1.T
+    dW1 = x.T @ d_z1
+    db1 = np.sum(d_z1, axis=0)
+
+    return dx, dW1, db1
 
 # Step 10 - mlp_backward (not yet solved)
 # TODO: implement
