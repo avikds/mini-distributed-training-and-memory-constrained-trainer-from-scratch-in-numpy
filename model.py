@@ -612,8 +612,16 @@ def compute_param_memory_bytes(params):
     """Return the total memory occupied by all parameter arrays."""
     return int(sum(value.nbytes for value in params.values()))
 
-# Step 37 - compute_optimizer_memory_bytes (not yet solved)
-# TODO: implement
+# Step 37 - compute_optimizer_memory_bytes
+def compute_optimizer_memory_bytes(state, num_workers=1, sharded=False):
+    """Return per-worker memory usage of Adam's m and v state."""
+    total_bytes = sum(value.nbytes for value in state["m"].values())
+    total_bytes += sum(value.nbytes for value in state["v"].values())
+
+    if sharded:
+        total_bytes /= num_workers
+
+    return int(total_bytes)
 
 # Step 38 - compute_peak_activation_memory_bytes (not yet solved)
 # TODO: implement
