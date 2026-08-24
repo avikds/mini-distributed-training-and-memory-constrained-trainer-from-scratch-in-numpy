@@ -214,8 +214,18 @@ def mlp_forward_checkpointed(x, params):
 
     return z2, cache
 
-# Step 16 - recompute_block_activations (not yet solved)
-# TODO: implement
+# Step 16 - recompute_block_activations
+def mlp_forward_checkpointed(x, params):
+    """Run the MLP forward pass while caching only the block input x."""
+    z1 = linear_forward(x, params["W1"], params["b1"])
+    a1 = relu_forward(z1)
+    z2 = linear_forward(a1, params["W2"], params["b2"])
+
+    cache = {
+        "x": x,
+    }
+
+    return z2, cache
 
 # Step 17 - mlp_backward_checkpointed (not yet solved)
 # TODO: implement
