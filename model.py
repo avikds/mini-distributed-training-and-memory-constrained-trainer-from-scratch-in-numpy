@@ -59,8 +59,21 @@ def relu_forward(x):
     """Apply ReLU elementwise."""
     return np.maximum(0.0, x)
 
-# Step 5 - mlp_forward (not yet solved)
-# TODO: implement
+# Step 5 - mlp_forward
+def mlp_forward(x, params):
+    """Run a two-layer MLP: Linear -> ReLU -> Linear."""
+    z1 = linear_forward(x, params["W1"], params["b1"])
+    a1 = relu_forward(z1)
+    z2 = linear_forward(a1, params["W2"], params["b2"])
+
+    cache = {
+        "x": x,
+        "z1": z1,
+        "a1": a1,
+        "z2": z2,
+    }
+
+    return z2, cache
 
 # Step 6 - mse_loss_and_grad (not yet solved)
 # TODO: implement
