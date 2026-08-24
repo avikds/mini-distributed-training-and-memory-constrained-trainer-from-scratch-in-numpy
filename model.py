@@ -465,8 +465,17 @@ def bucket_gradients(grads, bucket_size):
 
     return buckets, meta
 
-# Step 31 - init_adam_state (not yet solved)
-# TODO: implement
+# Step 31 - init_adam_state
+def init_adam_state(params):
+    """Build Adam optimizer state with zero first and second moments."""
+    m = {key: np.zeros_like(value) for key, value in params.items()}
+    v = {key: np.zeros_like(value) for key, value in params.items()}
+
+    return {
+        "m": m,
+        "v": v,
+        "t": 0,
+    }
 
 # Step 32 - partition_optimizer_state (not yet solved)
 # TODO: implement
