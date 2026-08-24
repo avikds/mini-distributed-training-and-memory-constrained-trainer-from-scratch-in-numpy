@@ -429,8 +429,41 @@ def data_parallel_train_step(x, y, params, num_workers, lr):
 
     return new_params
 
-# Step 30 - bucket_gradients (not yet solved)
-# TODO: implement
+# Step 30 - bucket_gradients
+def bucket_gradients(grads, bucket_size):
+    """Pack flattened gradients into greedy communication buckets."""
+    buckets = []
+    meta = []
+
+    current_values = []
+    current_size = 0
+    bucket_index = 0
+
+    for name in sorted(grads.keys()):
+        grad = grads[name]
+        flat = grad.reshape(-1)
+        size = flat.size
+
+        # Start a new bucket if the current bucket cannot fit this tensor.
+        if current_values and current_size + size > bucket_size:
+            buckets.append(np.concatenate(current_values))
+            bucket_index += 1
+            current_values = []
+            current_size = 0
+
+        start = current_size
+        end = start + size
+
+        current_values.append(flat)
+        current_size = end
+
+        meta.append((name, grad.shape, start, end, bucket_index))
+
+    # Flush the final bucket.
+    if current_values:
+        buckets.append(np.concatenate(current_values))
+
+    return buckets, meta
 
 # Step 31 - init_adam_state (not yet solved)
 # TODO: implement
