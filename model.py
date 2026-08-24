@@ -271,8 +271,13 @@ def make_master_params(params):
         for key, value in params.items()
     }
 
-# Step 21 - scale_loss (not yet solved)
-# TODO: implement
+# Step 21 - scale_loss
+def scale_loss(loss, dy_pred, scale):
+    """Scale the loss and upstream gradient by a fixed loss scale."""
+    scaled_loss = loss * scale
+    scaled_dy_pred = dy_pred * scale
+
+    return scaled_loss, scaled_dy_pred
 
 # Step 22 - unscale_gradients (not yet solved)
 # TODO: implement
