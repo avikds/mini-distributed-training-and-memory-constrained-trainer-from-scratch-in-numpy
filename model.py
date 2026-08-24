@@ -49,8 +49,10 @@ def init_mlp_params(in_dim, hidden_dim, out_dim, seed):
         "b2": b2,
     }
 
-# Step 3 - linear_forward (not yet solved)
-# TODO: implement
+# Step 3 - linear_forward
+def linear_forward(x, w, b):
+    """Apply a fully connected layer: y = x @ w + b."""
+    return x @ w + b
 
 # Step 4 - relu_forward (not yet solved)
 # TODO: implement
