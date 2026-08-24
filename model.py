@@ -514,8 +514,47 @@ def partition_optimizer_state(state, num_workers):
 
     return workers
 
-# Step 33 - local_shard_adam_update (not yet solved)
-# TODO: implement
+# Step 33 - local_shard_adam_update
+def local_shard_adam_update(params, grads, worker_state, lr=1e-3, beta1=0.9, beta2=0.999, eps=1e-8):
+    """Apply one Adam update to the local parameter shards."""
+    t = worker_state["t"] + 1
+
+    updated_param_shards = {}
+
+    for name in worker_state["m"]:
+        start, end = worker_state["shard_slices"][name]
+
+        grad_flat = grads[name].reshape(-1)
+        grad_shard = grad_flat[start:end]
+
+        m = worker_state["m"][name]
+        v = worker_state["v"][name]
+
+        m *= beta1
+        m += (1.0 - beta1) * grad_shard
+
+        v *= beta2
+        v += (1.0 - beta2) * (grad_shard ** 2)
+
+        m_hat = m / (1.0 - beta1 ** t)
+        v_hat = v / (1.0 - beta2 ** t)
+
+        param_flat = params[name].reshape(-1)
+        param_shard = param_flat[start:end]
+
+        updated_param_shards[name] = (
+            param_shard - lr * m_hat / (np.sqrt(v_hat) + eps)
+        )
+
+    updated_worker_state = {
+        "m": {name: value.copy() for name, value in worker_state["m"].items()},
+        "v": {name: value.copy() for name, value in worker_state["v"].items()},
+        "t": t,
+        "shard_slices": worker_state["shard_slices"].copy(),
+        "shapes": worker_state["shapes"].copy(),
+    }
+
+    return updated_param_shards, updated_worker_state
 
 # Step 34 - all_gather_param_shards (not yet solved)
 # TODO: implement
