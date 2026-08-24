@@ -715,6 +715,221 @@ def compare_memory_with_and_without_optimizations(x, params, num_workers):
         "savings_ratio": float(savings_ratio),
     }
 
-# Step 40 - full_distributed_training_loop (not yet solved)
-# TODO: implement
+# Step 40 - full_distributed_training_loop
+def full_distributed_training_loop(x, y, num_workers=2, num_steps=10, micro_batch_size=8, lr=1e-3, hidden_dim=16, use_checkpointing=True, use_mixed_precision=True, use_zero=True, seed=0):
+    """Run the end-to-end distributed memory-aware training loop."""
+
+    # Keep master parameters in their original float64 dtype.
+    params = init_mlp_params(
+        x.shape[1],
+        hidden_dim,
+        y.shape[1],
+        seed=seed,
+    )
+
+    # Adam state uses the same dtype as the master parameters.
+    adam_state = init_adam_state(params)
+
+    if use_zero:
+        worker_states = partition_optimizer_state(
+            adam_state,
+            num_workers,
+        )
+    else:
+        # Replicate the complete optimizer state on every worker.
+        worker_states = []
+
+        for _ in range(num_workers):
+            worker_states.append({
+                "m": {
+                    name: value.copy()
+                    for name, value in adam_state["m"].items()
+                },
+                "v": {
+                    name: value.copy()
+                    for name, value in adam_state["v"].items()
+                },
+                "t": adam_state["t"],
+                "shard_slices": {
+                    name: (0, value.size)
+                    for name, value in params.items()
+                },
+                "shapes": {
+                    name: value.shape
+                    for name, value in params.items()
+                },
+            })
+
+    loss_history = []
+
+    for _ in range(num_steps):
+        # Split global batch across workers.
+        worker_batches = shard_dataset_across_workers(
+            x,
+            y,
+            num_workers,
+        )
+
+        per_worker_grads = []
+        total_loss = 0.0
+        total_samples = 0
+
+        for x_worker, y_worker in worker_batches:
+
+            micro_batches = split_into_micro_batches(
+                x_worker,
+                y_worker,
+                micro_batch_size,
+            )
+
+            accumulated_grads = None
+            worker_loss = 0.0
+            worker_samples = 0
+
+            for x_mb, y_mb in micro_batches:
+
+                # Mixed precision uses temporary fp16 copies only.
+                if use_mixed_precision:
+                    working_params = cast_to_half_precision(params)
+                    x_work = x_mb.astype(np.float16)
+                    y_work = y_mb.astype(np.float16)
+                else:
+                    working_params = params
+                    x_work = x_mb
+                    y_work = y_mb
+
+                # Forward pass.
+                if use_checkpointing:
+                    y_pred, cache = mlp_forward_checkpointed(
+                        x_work,
+                        working_params,
+                    )
+                else:
+                    y_pred, cache = mlp_forward(
+                        x_work,
+                        working_params,
+                    )
+
+                # Loss and upstream gradient.
+                loss, dy_pred = mse_loss_and_grad(
+                    y_pred,
+                    y_work,
+                )
+
+                worker_loss += float(loss) * len(x_mb)
+                worker_samples += len(x_mb)
+
+                # Loss scaling for fp16 training.
+                if use_mixed_precision:
+                    _, dy_pred = scale_loss(
+                        loss,
+                        dy_pred,
+                        1024.0,
+                    )
+
+                # Backward pass.
+                if use_checkpointing:
+                    grads = mlp_backward_checkpointed(
+                        dy_pred,
+                        cache,
+                        working_params,
+                    )
+                else:
+                    grads = mlp_backward(
+                        dy_pred,
+                        cache,
+                        working_params,
+                    )
+
+                # Convert gradients back to master dtype.
+                if use_mixed_precision:
+                    grads = unscale_gradients(
+                        grads,
+                        1024.0,
+                    )
+
+                    grads = {
+                        name: value.astype(params[name].dtype)
+                        for name, value in grads.items()
+                    }
+
+                # Accumulate micro-batch gradients.
+                accumulated_grads = accumulate_gradients(
+                    accumulated_grads,
+                    grads,
+                )
+
+            # Average gradients across this worker's micro batches.
+            accumulated_grads = scale_accumulated_gradients(
+                accumulated_grads,
+                len(micro_batches),
+            )
+
+            per_worker_grads.append(accumulated_grads)
+
+            total_loss += worker_loss
+            total_samples += worker_samples
+
+        # Data-parallel gradient synchronization.
+        reduced_grads = all_reduce_mean(
+            per_worker_grads
+        )
+
+        # Optimizer update.
+        if use_zero:
+            params, worker_states = zero_optimizer_step(
+                params,
+                reduced_grads,
+                worker_states,
+                lr=lr,
+            )
+
+        else:
+            # Standard replicated Adam update.
+            worker_states[0]["t"] += 1
+            t = worker_states[0]["t"]
+
+            for name in params:
+                g = reduced_grads[name].astype(
+                    params[name].dtype
+                )
+
+                m = worker_states[0]["m"][name]
+                v = worker_states[0]["v"][name]
+
+                m[...] = 0.9 * m + 0.1 * g
+                v[...] = 0.999 * v + 0.001 * (g * g)
+
+                m_hat = m / (1.0 - 0.9 ** t)
+                v_hat = v / (1.0 - 0.999 ** t)
+
+                params[name] -= (
+                    lr * m_hat / (np.sqrt(v_hat) + 1e-8)
+                )
+
+            # Keep replicated optimizer states synchronized.
+            for worker_state in worker_states[1:]:
+                worker_state["t"] = t
+
+                for name in params:
+                    worker_state["m"][name][...] = (
+                        worker_states[0]["m"][name]
+                    )
+                    worker_state["v"][name][...] = (
+                        worker_states[0]["v"][name]
+                    )
+
+        # Record mean loss for this training step.
+        mean_loss = (
+            total_loss / total_samples
+            if total_samples > 0
+            else 0.0
+        )
+
+        loss_history.append(float(mean_loss))
+
+    return {
+        "loss_history": loss_history,
+        "final_params": params,
+    }
 
