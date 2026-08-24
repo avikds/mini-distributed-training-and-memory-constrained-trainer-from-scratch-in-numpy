@@ -51,23 +51,6 @@ python scaffold.py
 - [x] **39.** compare_memory_with_and_without_optimizations
 - [x] **40.** full_distributed_training_loop
 
-## Results
+---
 
-```
-Data: x(32, 8), y(32, 4)
-Params: W1(8, 16), b1(16,), W2(16, 4), b2(4,)
-Initial MSE loss: 11.775703
-Grad norms: W1=2.7308, b1=0.6080, W2=3.8400, b2=0.9442
-Accumulated grad norm (W1): 2.7308
-Checkpoint matches full backward: True
-Checkpointing saves ~{'full_bytes': 5120, 'checkpoint_bytes': 1024, 'saved_bytes': 4096} bytes of activations
-Loss after one data-parallel SGD step: 11.543701
-ZeRO updated W2 norm: 2.7310
-Memory comparison (bytes):
-  baseline_bytes: 8176
-  optimized_bytes: 1784
-  breakdown_baseline: {'params': 848, 'optimizer': 1696, 'activations': 5632}
-  breakdown_optimized: {'params': 424, 'optimizer': 848, 'activations': 512}
-  savings_ratio: 0.7818003913894325
-Loss history (10 steps): start=7.6543, end=7.2717
-```
+Built on Deep-ML.
