@@ -263,8 +263,13 @@ def cast_to_half_precision(values):
         for key, value in values.items()
     }
 
-# Step 20 - make_master_params (not yet solved)
-# TODO: implement
+# Step 20 - make_master_params
+def make_master_params(params):
+    """Return independent float32 master copies of all parameters."""
+    return {
+        key: value.astype(np.float32).copy()
+        for key, value in params.items()
+    }
 
 # Step 21 - scale_loss (not yet solved)
 # TODO: implement
