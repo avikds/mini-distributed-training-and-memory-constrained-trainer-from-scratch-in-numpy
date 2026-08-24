@@ -292,8 +292,41 @@ def has_non_finite_gradients(grads):
     """Return True if any gradient contains NaN or Inf."""
     return any(not np.all(np.isfinite(grad)) for grad in grads.values())
 
-# Step 24 - mixed_precision_step (not yet solved)
-# TODO: implement
+# Step 24 - mixed_precision_step
+def mixed_precision_step(x, y, master_params, scale, lr):
+    """Run one mixed-precision training step with an fp32 master copy."""
+    master_params = {
+        key: value.astype(np.float32).copy()
+        for key, value in master_params.items()
+    }
+
+    half_params = cast_to_half_precision(master_params)
+    x_half = x.astype(np.float16)
+    y_half = y.astype(np.float16)
+
+    y_pred, cache = mlp_forward(x_half, half_params)
+
+    loss, dy_pred = mse_loss_and_grad(y_pred, y_half)
+
+    _, scaled_dy_pred = scale_loss(loss, dy_pred, scale)
+
+    scaled_grads = mlp_backward(
+        scaled_dy_pred,
+        cache,
+        half_params,
+    )
+
+    grads = unscale_gradients(scaled_grads, scale)
+
+    if has_non_finite_gradients(grads):
+        return float(loss), master_params, True
+
+    new_master_params = {
+        key: (master_params[key] - lr * grads[key]).astype(np.float32)
+        for key in master_params
+    }
+
+    return float(loss), new_master_params, False
 
 # Step 25 - shard_dataset_across_workers (not yet solved)
 # TODO: implement
