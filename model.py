@@ -355,8 +355,15 @@ def compute_local_gradients(x, y, params):
     grads = mlp_backward(dy_pred, cache, params)
     return grads
 
-# Step 27 - all_reduce_mean (not yet solved)
-# TODO: implement
+# Step 27 - all_reduce_mean
+def all_reduce_mean(per_worker_grads):
+    """Average gradient dictionaries elementwise across workers."""
+    num_workers = len(per_worker_grads)
+
+    return {
+        key: sum(grads[key] for grads in per_worker_grads) / num_workers
+        for key in per_worker_grads[0]
+    }
 
 # Step 28 - ring_all_reduce_mean (not yet solved)
 # TODO: implement
