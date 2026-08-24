@@ -410,8 +410,24 @@ def ring_all_reduce_mean(per_worker_arrays):
 
     return result.reshape(shape)
 
-# Step 29 - data_parallel_train_step (not yet solved)
-# TODO: implement
+# Step 29 - data_parallel_train_step
+def data_parallel_train_step(x, y, params, num_workers, lr):
+    """Perform one synchronous data-parallel SGD update."""
+    shards = shard_dataset_across_workers(x, y, num_workers)
+
+    per_worker_grads = [
+        compute_local_gradients(x_shard, y_shard, params)
+        for x_shard, y_shard in shards
+    ]
+
+    mean_grads = all_reduce_mean(per_worker_grads)
+
+    new_params = {
+        key: params[key] - lr * mean_grads[key]
+        for key in params
+    }
+
+    return new_params
 
 # Step 30 - bucket_gradients (not yet solved)
 # TODO: implement
