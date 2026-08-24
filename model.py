@@ -13,14 +13,14 @@ def make_synthetic_regression_batch(batch_size, in_dim, out_dim, seed):
     """Return (x, y) where x is (batch_size, in_dim) and y is (batch_size, out_dim) float64."""
     np.random.seed(seed)
 
-    # Sample input features from a standard normal distribution.
     x = np.random.randn(batch_size, in_dim).astype(np.float64)
 
-    # Build a hidden linear teacher mapping.
+    # Hidden linear teacher mapping.
     teacher_w = np.random.randn(in_dim, out_dim).astype(np.float64)
 
-    # Generate targets and add a small amount of Gaussian noise.
-    noise = 0.01 * np.random.randn(batch_size, out_dim)
+    # Small Gaussian observation noise.
+    noise = 0.1 * np.random.randn(batch_size, out_dim)
+
     y = x @ teacher_w + noise
 
     return x.astype(np.float64), y.astype(np.float64)
@@ -166,8 +166,31 @@ def scale_accumulated_gradients(accum_grads, num_micro_batches):
         for key, value in accum_grads.items()
     }
 
-# Step 14 - grad_accumulation_step (not yet solved)
-# TODO: implement
+# Step 14 - grad_accumulation_step
+def grad_accumulation_step(x, y, params, micro_batch_size):
+    """Compute full-batch-equivalent gradients using micro-batch accumulation."""
+    micro_batches = split_into_micro_batches(
+        x,
+        y,
+        micro_batch_size,
+    )
+
+    accum_grads = None
+
+    for x_mb, y_mb in micro_batches:
+        y_pred, cache = mlp_forward(x_mb, params)
+        _, dy_pred = mse_loss_and_grad(y_pred, y_mb)
+        new_grads = mlp_backward(dy_pred, cache, params)
+
+        accum_grads = accumulate_gradients(
+            accum_grads,
+            new_grads,
+        )
+
+    return scale_accumulated_gradients(
+        accum_grads,
+        len(micro_batches),
+    )
 
 # Step 15 - mlp_forward_checkpointed (not yet solved)
 # TODO: implement
