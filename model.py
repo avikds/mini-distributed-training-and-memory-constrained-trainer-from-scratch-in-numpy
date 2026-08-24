@@ -477,8 +477,42 @@ def init_adam_state(params):
         "t": 0,
     }
 
-# Step 32 - partition_optimizer_state (not yet solved)
-# TODO: implement
+# Step 32 - partition_optimizer_state
+def partition_optimizer_state(state, num_workers):
+    """Partition Adam moment tensors into contiguous shards across workers."""
+    workers = [
+        {
+            "m": {},
+            "v": {},
+            "shard_slices": {},
+            "shapes": {},
+            "t": state["t"],
+        }
+        for _ in range(num_workers)
+    ]
+
+    for name in state["m"]:
+        m_flat = state["m"][name].reshape(-1)
+        v_flat = state["v"][name].reshape(-1)
+        size = m_flat.size
+
+        base_size = size // num_workers
+        remainder = size % num_workers
+
+        start = 0
+
+        for worker_idx in range(num_workers):
+            shard_size = base_size + (1 if worker_idx < remainder else 0)
+            end = start + shard_size
+
+            workers[worker_idx]["m"][name] = m_flat[start:end].copy()
+            workers[worker_idx]["v"][name] = v_flat[start:end].copy()
+            workers[worker_idx]["shard_slices"][name] = (start, end)
+            workers[worker_idx]["shapes"][name] = state["m"][name].shape
+
+            start = end
+
+    return workers
 
 # Step 33 - local_shard_adam_update (not yet solved)
 # TODO: implement
