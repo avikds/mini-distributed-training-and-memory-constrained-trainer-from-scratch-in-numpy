@@ -54,8 +54,10 @@ def linear_forward(x, w, b):
     """Apply a fully connected layer: y = x @ w + b."""
     return x @ w + b
 
-# Step 4 - relu_forward (not yet solved)
-# TODO: implement
+# Step 4 - relu_forward
+def relu_forward(x):
+    """Apply ReLU elementwise."""
+    return np.maximum(0.0, x)
 
 # Step 5 - mlp_forward (not yet solved)
 # TODO: implement
