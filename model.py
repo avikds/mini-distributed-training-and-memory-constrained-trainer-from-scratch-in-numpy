@@ -328,8 +328,24 @@ def mixed_precision_step(x, y, master_params, scale, lr):
 
     return float(loss), new_master_params, False
 
-# Step 25 - shard_dataset_across_workers (not yet solved)
-# TODO: implement
+# Step 25 - shard_dataset_across_workers
+def shard_dataset_across_workers(x, y, num_workers):
+    """Split x and y into num_workers contiguous shards along axis 0."""
+    n = len(x)
+    base_size = n // num_workers
+    remainder = n % num_workers
+
+    shards = []
+    start = 0
+
+    for worker in range(num_workers):
+        shard_size = base_size + (1 if worker < remainder else 0)
+        end = start + shard_size
+
+        shards.append((x[start:end], y[start:end]))
+        start = end
+
+    return shards
 
 # Step 26 - compute_local_gradients (not yet solved)
 # TODO: implement
