@@ -242,8 +242,18 @@ def mlp_backward_checkpointed(dy_pred, light_cache, params):
         params,
     )
 
-# Step 18 - estimate_checkpointing_memory_savings (not yet solved)
-# TODO: implement
+# Step 18 - estimate_checkpointing_memory_savings
+def estimate_checkpointing_memory_savings(batch_size, in_dim, hidden_dim, out_dim, dtype_bytes):
+    """Estimate activation memory in bytes for full vs checkpointed forward."""
+    full_bytes = int(batch_size * (in_dim + 2 * hidden_dim) * dtype_bytes)
+    checkpoint_bytes = int(batch_size * in_dim * dtype_bytes)
+    saved_bytes = full_bytes - checkpoint_bytes
+
+    return {
+        "full_bytes": full_bytes,
+        "checkpoint_bytes": checkpoint_bytes,
+        "saved_bytes": saved_bytes,
+    }
 
 # Step 19 - cast_to_half_precision (not yet solved)
 # TODO: implement
