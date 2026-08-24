@@ -633,8 +633,87 @@ def compute_peak_activation_memory_bytes(x, params, checkpointed=False):
 
     return int(sum(value.nbytes for value in cache.values()))
 
-# Step 39 - compare_memory_with_and_without_optimizations (not yet solved)
-# TODO: implement
+# Step 39 - compare_memory_with_and_without_optimizations
+def compare_memory_with_and_without_optimizations(x, params, num_workers):
+    """Compare per-worker memory for baseline and optimized training."""
+
+    # Baseline trainer uses float32 parameters/master weights.
+    baseline_params_dict = {
+        name: value.astype(np.float32)
+        for name, value in params.items()
+    }
+
+    baseline_params = compute_param_memory_bytes(baseline_params_dict)
+
+    # Adam state is also float32.
+    baseline_state = init_adam_state(baseline_params_dict)
+
+    baseline_optimizer = compute_optimizer_memory_bytes(
+        baseline_state,
+        num_workers=num_workers,
+        sharded=False,
+    )
+
+    baseline_activations = compute_peak_activation_memory_bytes(
+        x.astype(np.float32),
+        baseline_params_dict,
+        checkpointed=False,
+    )
+
+    baseline_total = (
+        baseline_params
+        + baseline_optimizer
+        + baseline_activations
+    )
+
+    # Optimized trainer keeps parameters/activations in float16.
+    optimized_params_dict = cast_to_half_precision(baseline_params_dict)
+
+    optimized_params = compute_param_memory_bytes(
+        optimized_params_dict
+    )
+
+    # ZeRO sharding only changes optimizer memory when there is
+    # more than one worker.
+    optimized_optimizer = compute_optimizer_memory_bytes(
+        baseline_state,
+        num_workers=num_workers,
+        sharded=(num_workers > 1),
+    )
+
+    optimized_activations = compute_peak_activation_memory_bytes(
+        x.astype(np.float16),
+        optimized_params_dict,
+        checkpointed=True,
+    )
+
+    optimized_total = (
+        optimized_params
+        + optimized_optimizer
+        + optimized_activations
+    )
+
+    savings_ratio = (
+        (baseline_total - optimized_total) / baseline_total
+        if baseline_total > 0
+        else 0.0
+    )
+
+    return {
+        "baseline_bytes": int(baseline_total),
+        "optimized_bytes": int(optimized_total),
+        "breakdown_baseline": {
+            "params": int(baseline_params),
+            "optimizer": int(baseline_optimizer),
+            "activations": int(baseline_activations),
+        },
+        "breakdown_optimized": {
+            "params": int(optimized_params),
+            "optimizer": int(optimized_optimizer),
+            "activations": int(optimized_activations),
+        },
+        "savings_ratio": float(savings_ratio),
+    }
 
 # Step 40 - full_distributed_training_loop (not yet solved)
 # TODO: implement
