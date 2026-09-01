@@ -11,7 +11,7 @@ from model import *  # noqa: F401, F403 (pulls in your solution functions)
 gradient accumulation, checkpointing, mixed precision, data parallel, and ZeRO."""
 import numpy as np
 
-from model import (
+from solution import (
     make_synthetic_regression_batch,
     init_mlp_params,
     linear_forward,
